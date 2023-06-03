@@ -21,7 +21,8 @@ warnings.filterwarnings('ignore')
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 # Flag for tuning
-tuned = True
+tuned = False
+nn = False
 submit_to_kaggle = True
 
 # 1. Data import
@@ -32,6 +33,8 @@ df_train['SetId'] = 'Train'
 df_test['SetId'] = 'Test'
 target_column = 'Transported'
 df = pd.concat([df_train, df_test]).copy()
+original_columns = df.columns
+# original_columns.drop(columns=['SetId', 'Name', 'DeckNum'], axis=1, inplace=True)
 
 # 2. Preprocess and tune train data
 # X_train, X_val, y_train, y_val = preprocess(df)
@@ -43,13 +46,12 @@ if tuned:
         """
         This function defines the hyperparameter space to be searched and optimizes them using Optuna.
         """
+        bootstrap_type_value = trial.suggest_categorical('bootstrap_type', ['Bernoulli', 'Bayesian', 'No'])
         params = {
             'iterations': trial.suggest_int('iterations', 100, 2000),
             'depth': trial.suggest_int('depth', 1, 15),
             'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 0, 200),
             'l2_leaf_reg': trial.suggest_int('l2_leaf_reg', 1, 5),
-            'bagging_temperature': trial.suggest_uniform('bagging_temperature', 0, 0.2),
-            'subsample': trial.suggest_uniform('subsample', 0.8, 1.0),
             'rsm': trial.suggest_uniform('rsm', 0.8, 1.0),
             'early_stopping_rounds': trial.suggest_int('early_stopping_rounds', 5, 30),
             'od_type': trial.suggest_categorical("od_type", ["IncToDec", "Iter"]),
@@ -61,11 +63,20 @@ if tuned:
             'boosting_type': trial.suggest_categorical('boosting_type', ['Ordered', 'Plain']),
             'leaf_estimation_method': trial.suggest_categorical('leaf_estimation_method', ['Newton', 'Gradient']),
             'auto_class_weights': trial.suggest_categorical('auto_class_weights', ['None', 'Balanced']),
+            'bootstrap_type': bootstrap_type_value,
+            'verbose': False,
 
-            'task_type': 'GPU',
-            'devices': 'GPU:1',
-            'verbose': False
         }
+
+        if bootstrap_type_value == 'Bernoulli':
+            params['subsample'] = trial.suggest_uniform('subsample', 0.8, 1.0)
+        elif bootstrap_type_value == 'Bayesian':
+            params['bagging_temperature'] = trial.suggest_uniform('bagging_temperature', 0, 0.2)
+        elif bootstrap_type_value == 'No':
+            if 'bagging_temperature' in params:
+                del params['bagging_temperature']
+            if 'subsample' in params:
+                del params['subsample']
 
         # Odfiltrowuj niedozwolone kombinacje parametrów
         if params['boosting_type'] == 'Ordered' and params['grow_policy'] in ['Depthwise', 'Lossguide']:
@@ -92,9 +103,60 @@ if tuned:
     # Training the model with the best parameters
     catb = CatBoostClassifier(**study.best_params, verbose=0)
     catb.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False)
+
+elif nn:
+    from keras.models import Model
+    from keras.layers import Input, Dense, Embedding, Concatenate, Flatten
+    from keras.optimizers import Adam
+
+    # inputy dla cech numerycznych
+    numeric_input = Input(shape=(6,))
+    dense_layer = Dense(10, activation='relu')(numeric_input)
+
+    # inputy dla cech kategorycznych
+    categorical_inputs = []
+    num_categories = [len(np.unique(X_train[:, i])) for i, col in enumerate(original_columns) if
+                      df[col].dtype == 'object']
+    numeric_data = X_train[:, [i for i, col in enumerate(original_columns) if df[col].dtype != 'object']]
+    categorical_data = [X_train[:, i] for i, col in enumerate(original_columns) if df[col].dtype == 'object']
+
+    for i in range(13):  # liczba kolumn kategorycznych
+        categorical_input = Input(shape=(1,))
+        embedding = Embedding(input_dim=num_categories[i], output_dim=10, input_length=1)(categorical_input)
+        categorical_inputs.append(categorical_input)
+        dense_layer = Concatenate()([dense_layer, Flatten()(embedding)])
+
+    # połączenie warstw
+    output_layer = Dense(1, activation='sigmoid')(dense_layer)
+
+    model = Model([numeric_input] + categorical_inputs, output_layer)
+
+    model.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
+
+    # teraz możemy dopasować model
+    model.fit([numeric_data] + categorical_data, y_train, epochs=10, batch_size=32)
+
 else:
     # Training the model without tuning
-    catb = CatBoostClassifier(verbose=0)
+    # catb = CatBoostClassifier(verbose=0)
+    # catb.fit(X_train, y_train, verbose=False)
+
+    catb = CatBoostClassifier(bootstrap_type='Bayesian',
+                              iterations=1885, depth=14,
+                              min_data_in_leaf= 162,
+                              l2_leaf_reg= 4,
+                              rsm= 0.8784357141833647,
+                              early_stopping_rounds= 11,
+                              od_type= 'IncToDec',
+                              learning_rate= 0.02888812191896493,
+                              objective= 'Logloss',
+                              eval_metric= 'Accuracy',
+                              grow_policy= 'SymmetricTree',
+                              leaf_estimation_iterations= 1,
+                              boosting_type= 'Ordered',  # Fix typo here
+                              leaf_estimation_method= 'Newton',
+                              auto_class_weights= 'Balanced',
+                              bagging_temperature= 0.03986831910447205)
     catb.fit(X_train, y_train, verbose=False)
 
 # 5. Predicting and creating submission

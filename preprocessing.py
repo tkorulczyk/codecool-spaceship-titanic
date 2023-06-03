@@ -5,6 +5,7 @@ from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 
 # Scikit-learn & third-party classifier imports
+from sklearn.experimental import enable_iterative_imputer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import IterativeImputer
 
@@ -50,7 +51,7 @@ def one_hot_encoding(df, columns):
     return df_encoded
 
 
-def num_inputation(df, n_iterations=100):
+def num_inputation(df, n_iterations=10):
     missing_vals = df.isna()
     # Get all numerical columns from df
     numerical_columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -309,6 +310,7 @@ def fill_missing_values(df, expenses):
     df = fill_missing_age(df, expenses)
     df = fill_missing_deckno(df)
     df = fill_missing_deckside(df)
+
     return df
 
 
@@ -334,6 +336,8 @@ def preprocess(df, target_column):
     for ex in EXPENSES_COLUMNS:
         expenses += df[ex]
     df = fill_missing_values(df, expenses)
+    # df['DeckNum'] = np.where(df.DeckNum.isnull() & df.LastName.eq(df.LastName.shift()),
+    #                      df.DeckNum.shift(), df.DeckNum)
 
     df.loc[((df['ShoppingMall'] > 0) |
             (df['FoodCourt'] > 0) |
@@ -360,7 +364,7 @@ def preprocess(df, target_column):
     df = one_hot_encoding(df, cols_one_hot_encoded)
     # Ordinal encoding
     oe = OrdinalEncoder()
-    cols_ordinal_encoded = ['CryoSleep', 'VIP', 'DeckSize', 'Transported', 'DeckNo']
+    cols_ordinal_encoded = ['CryoSleep', 'VIP', 'DeckSize', 'Transported', 'DeckNo','DeckNum']
     df[cols_ordinal_encoded] = oe.fit_transform(df[cols_ordinal_encoded])
 
     # 4. Filling missing values
@@ -381,6 +385,9 @@ def preprocess(df, target_column):
 
     X.drop(columns=['SetId', 'FirstName', 'LastName', 'DeckNum'], axis=1, inplace=True)
     X_test.drop(columns=['SetId', target_column, 'FirstName', 'LastName', 'DeckNum'], axis=1, inplace=True)
+
+    # X.drop(columns=['SetId', 'FirstName', 'LastName'], axis=1, inplace=True)
+    # X_test.drop(columns=['SetId', target_column, 'FirstName', 'LastName'], axis=1, inplace=True)
 
     X = X.drop(target_column, axis=1)
 

@@ -13,9 +13,9 @@ from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 
 # Local imports
-from preprocessing import preprocess
+from preprocessor.preprocess import preprocess
 from utils.utils import print_metrics, print_crossvalidated_metrics
-from model_tunning.hyper_tunning import objective
+from tunner.params_tunner import objective
 
 # Set warnings and logging
 import subprocess
@@ -29,7 +29,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 # Flag for tuning
 show_confusion_matrices = False
 submit_to_kaggle = False
-running_mode = 'standard' # Running modes: ['tunning', 'nn', 'standard']
+running_mode = 'standard' # Running modes: ['tunner', 'nn', 'standard']
 
 
 # 1. Data import
@@ -55,7 +55,7 @@ def study_and_print(model_type):
 
 
 # 3. Hyperparameter tuning and model fitting
-if running_mode == 'tunning':
+if running_mode == 'tunner':
     model_type = ''
     # Initialize Optuna study object
     study = optuna.create_study(direction='maximize', study_name=f"{model_type} Hyperparameter Optimization")

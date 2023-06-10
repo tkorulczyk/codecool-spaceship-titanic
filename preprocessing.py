@@ -13,32 +13,6 @@ from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 from tabulate import tabulate
 
 
-
-# def get_FamilyId(df):
-#     df['FamilyId'] = None
-#     group_family_counter = 1
-#     previous_group_id = -1
-#     group_counts = df['GroupId'].value_counts()
-#
-#     for index, row in df.iterrows():
-#         same_group = df[df['GroupId'] == row['GroupId']]
-#         same_last_name_in_group = same_group[same_group['LastName'] == row['LastName']]
-#
-#         if row['GroupId'] != previous_group_id:
-#             group_family_counter = 1
-#             previous_group_id = row['GroupId']
-#
-#         if group_counts[row['GroupId']] > 1 and len(same_last_name_in_group) > 1:
-#             if pd.isna(df.iat[index, df.columns.get_loc('FamilyId')]):
-#                 family_members = same_last_name_in_group.index
-#                 for member_index in family_members:
-#                     df.iat[member_index, df.columns.get_loc('FamilyId')] = group_family_counter
-#                 group_family_counter += 1
-#         elif pd.isna(df.iat[index, df.columns.get_loc('FamilyId')]):
-#             df.iat[index, df.columns.get_loc('FamilyId')] = 0
-#
-#     return df
-
 def get_FamilyId(df):
     df['FamilySize'] = df.groupby(['GroupId', 'LastName'])['GroupId'].transform('count')
     df['FamilyId'] = df.apply(lambda row: row['GroupId'] if row['FamilySize'] > 1 else '0', axis=1)
@@ -99,9 +73,6 @@ def split_column(df, column_name, separator, new_column_names):
     df.drop(columns=column_name, inplace=True)
 
     return df
-
-
-
 
 
 def analyze_data(df):
@@ -197,7 +168,6 @@ def fill_missing_cryosleep(df, expenses):
     df.loc[(df[amenities_cols].gt(0).any(axis=1)) & df['CryoSleep'].isna(), 'CryoSleep'] = False
     df.loc[(df['CryoSleep'] == True) & df[amenities_cols].isna().any(axis=1), amenities_cols] = 0
 
-
     return df
 
 
@@ -263,6 +233,7 @@ def fill_missing_values(df):
 
 def group_age(df):
     df['Age'] = pd.cut(df['Age'], bins=[0,1,5,13,18,25,66,110], labels=[0,1,2,3,4,5,6], right=False)
+
     return df
 
 
@@ -273,53 +244,15 @@ def preprocess(df, target_column):
     df = split_column(df, 'Cabin', '/', ['DeckNo', 'DeckNum', 'DeckSize'])
     df = split_column(df, 'Name', ' ', ['FirstName', 'LastName'])
 
-
-
-    # analyze_data(df)
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-
-    # fig, ax = plt.subplots(15, figsize=(18, 36))
-    # sns.countplot(x='Age', hue='Transported', data=df, ax=ax[14])
-    # sns.countplot(x='Age', hue='HomePlanet', data=df, ax=ax[0])
-    # sns.countplot(x='Age', hue='CryoSleep', data=df, ax=ax[1])
-    # sns.countplot(x='Age', hue='Destination', data=df, ax=ax[2])
-    # sns.countplot(x='Age', hue='VIP', data=df, ax=ax[3])
-    # sns.countplot(x='Age', hue='DeckNo', data=df, ax=ax[4])
-    # sns.countplot(x='Age', hue='DeckSide', data=df, ax=ax[5])
-    #
-    # df.groupby('Age')['RoomService'].sum().plot(kind='bar', ax=ax[6], legend=True)
-    # df.groupby('Age')['FoodCourt'].sum().plot(kind='bar', ax=ax[7], legend=True)
-    # df.groupby('Age')['ShoppingMall'].sum().plot(kind='bar', ax=ax[8], legend=True)
-    # df.groupby('Age')['Spa'].sum().plot(kind='bar', ax=ax[9], legend=True)
-    # df.groupby('Age')['VRDeck'].sum().plot(kind='bar', ax=ax[10], legend=True)
-    # df.groupby('Age')['Group'].count().plot(kind='bar', ax=ax[11], legend=True)
-    # df.groupby('Age')['pp'].count().plot(kind='bar', ax=ax[12], legend=True)
-    # df.groupby('Age')['Num'].count().plot(kind='bar', ax=ax[13], legend=True)
-    # fig.tight_layout()
-    # plt.show
     df = get_FamilyId(df)
 
     missing_values = df.groupby('SetId').apply(lambda x: x.isna().sum()).transpose()
     print("\n==== PRINT MISSING VALUES ====")
     print(missing_values)
 
-    # df['Transported'].value_counts().plot(kind='pie', autopct='%1.1f%%')
-    # plt.show()
-
-
     df = fill_missing_values(df)
 
-    # df['DeckNum'] = df['DeckNum'].fillna(value=df['DeckNum'].mode()[0])
-    # df['DeckSize'] = df['DeckSize'].fillna(value=df['DeckSize'].mode()[0])
-
-    # df['DeckNum'] = np.where(df.DeckNum.isnull() & df.LastName.eq(df.LastName.shift()),
-    #                      df.DeckNum.shift(), df.DeckNum)
     df = group_age(df)
-
-
-    # df.isna().sum().plot(kind='bar')
-    # plt.show()
 
     print(df.info())
 
@@ -346,9 +279,6 @@ def preprocess(df, target_column):
     df['DeckNum'] = pd.to_numeric(df['DeckNum'], errors='coerce')
     mean_value = df['DeckNum'].mean()
     df['DeckNum'].fillna(mean_value, inplace=True)
-
-    df.to_csv("results_to_check.csv")
-
 
     X_test = df.loc[df['SetId'] == 'Test']
     X = df.loc[df['SetId'] == 'Train']

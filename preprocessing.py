@@ -1,50 +1,49 @@
 # Standard library imports
 import numpy as np
 import pandas as pd
-from catboost import CatBoostClassifier
-from lightgbm import LGBMClassifier
 
 # Scikit-learn & third-party classifier imports
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import IterativeImputer
 
-# Scikit-learn metrics imports
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score, roc_auc_score, \
-    matthews_corrcoef
 
 # Scikit-learn preprocessing imports & model selection imports
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 from tabulate import tabulate
-from xgboost import XGBClassifier
 
 
-def get_family_id(df):
-    df['FamilyId'] = None
-    group_family_counter = 1
-    previous_group_id = -1
-    group_counts = df['GroupId'].value_counts()
-    for index, row in df.iterrows():
-        same_group = df[df['GroupId'] == row['GroupId']]
-        same_last_name_in_group = same_group[same_group['LastName'] == row['LastName']]
 
-        if row['GroupId'] != previous_group_id:
-            group_family_counter = 1
-            previous_group_id = row['GroupId']
+# def get_FamilyId(df):
+#     df['FamilyId'] = None
+#     group_family_counter = 1
+#     previous_group_id = -1
+#     group_counts = df['GroupId'].value_counts()
+#
+#     for index, row in df.iterrows():
+#         same_group = df[df['GroupId'] == row['GroupId']]
+#         same_last_name_in_group = same_group[same_group['LastName'] == row['LastName']]
+#
+#         if row['GroupId'] != previous_group_id:
+#             group_family_counter = 1
+#             previous_group_id = row['GroupId']
+#
+#         if group_counts[row['GroupId']] > 1 and len(same_last_name_in_group) > 1:
+#             if pd.isna(df.iat[index, df.columns.get_loc('FamilyId')]):
+#                 family_members = same_last_name_in_group.index
+#                 for member_index in family_members:
+#                     df.iat[member_index, df.columns.get_loc('FamilyId')] = group_family_counter
+#                 group_family_counter += 1
+#         elif pd.isna(df.iat[index, df.columns.get_loc('FamilyId')]):
+#             df.iat[index, df.columns.get_loc('FamilyId')] = 0
+#
+#     return df
 
-        if group_counts[row['GroupId']] > 1 and len(same_last_name_in_group) > 1:
-            if pd.isnull(df.at[index, 'FamilyId']):
-                family_members = same_last_name_in_group.index
-                for member_index in family_members:
-                    df.at[member_index, 'FamilyId'] = group_family_counter
-                group_family_counter += 1
-        elif pd.isnull(df.at[index, 'FamilyId']):
-            df.at[index, 'FamilyId'] = 0
-    # df.drop(['LastName', 'FirstName'], axis=1, inplace=True)
+def get_FamilyId(df):
+    df['FamilySize'] = df.groupby(['GroupId', 'LastName'])['GroupId'].transform('count')
+    df['FamilyId'] = df.apply(lambda row: row['GroupId'] if row['FamilySize'] > 1 else '0', axis=1)
 
     return df
-
 
 def one_hot_encoding(df, columns):
     df_encoded = pd.get_dummies(df, columns=columns, prefix=columns, prefix_sep='.')
@@ -62,6 +61,7 @@ def num_inputation(df, n_iterations=10):
         imputed_data_results = []
         for _ in range(n_iterations):
             imputer = IterativeImputer(n_nearest_features=10, random_state=42)
+            # imputer = IterativeImputer(n_nearest_features=10)
             imputed_data = imputer.fit_transform(df[numerical_columns])
             imputed_data_results.append(imputed_data)
 
@@ -101,72 +101,7 @@ def split_column(df, column_name, separator, new_column_names):
     return df
 
 
-def compute_metrics(y_true, y_pred, average='weighted'):
-    """
-    Calculate and return various evaluation metrics for given ground truth labels and predicted labels.
 
-    Parameters:
-    y_true (array-like): Ground truth labels.
-    y_pred (array-like): Predicted labels.
-    average (str, optional): The averaging method to be used for calculating precision, recall, and F1-score.
-                              Defaults to 'weighted'.
-
-    Returns:
-    tuple: A tuple containing the following metrics (in order): accuracy, precision, recall, F1-score,
-           Jaccard score, ROC AUC score, and Matthews correlation coefficient.
-    """
-    accuracy = round(accuracy_score(y_true, y_pred), 3)
-    precision = round(precision_score(y_true, y_pred, average=average), 3)
-    recall = round(recall_score(y_true, y_pred, average=average), 3)
-    f1 = round(f1_score(y_true, y_pred, average=average), 3)
-    jaccard = round(jaccard_score(y_true, y_pred, average=average), 3)
-    roc_auc = round(roc_auc_score(y_true, y_pred), 3)
-    matthews_corr = round(matthews_corrcoef(y_true, y_pred), 3)
-    return accuracy, precision, recall, f1, jaccard, roc_auc, matthews_corr
-
-
-def print_metrics(model_name, y_train_true, y_train_pred, y_val_true, y_val_pred):
-    metrics_train = compute_metrics(y_train_true, y_train_pred)
-    metrics_val = compute_metrics(y_val_true, y_val_pred)
-    mislabeled = (y_val_true != y_val_pred).sum()
-    result = {
-        'Model': model_name,
-        'Mislabeled': mislabeled,
-        'Accuracy Train': metrics_train[0],
-        'Accuracy Val': metrics_val[0],
-        'Precision Train': metrics_train[1],
-        'Precision Val': metrics_val[1],
-        'Recall Train': metrics_train[2],
-        'Recall Val': metrics_val[2],
-        'F1 Train': metrics_train[3],
-        'F1 Val': metrics_val[3],
-        'Jaccard Train': metrics_train[4],
-        'Jaccard Val': metrics_val[4],
-        'ROC AUC Train': metrics_train[5],
-        'ROC AUC Val': metrics_val[5],
-        'Matthews Corr Train': metrics_train[6],
-        'Matthews Corr Val': metrics_val[6],
-    }
-    return result
-
-
-def fit_and_predict(model, X_train, y_train, X_val):
-    """
-    Fit the given model with the training data and make predictions for both training and validation sets.
-
-    Parameters:
-    model: A classifier model instance.
-    X_train (array-like): The training input samples.
-    y_train (array-like): The target values for the training input samples.
-    X_val (array-like): The validation input samples.
-
-    Returns:
-    tuple: A tuple containing the predicted labels for the training set and the validation set.
-    """
-    model.fit(X_train, y_train)
-    y_train_pred = model.predict(X_train)
-    y_val_pred = model.predict(X_val)
-    return y_train_pred, y_val_pred
 
 
 def analyze_data(df):
@@ -254,8 +189,14 @@ def fill_missing_cryosleep(df, expenses):
     """
     Fill missing CryoSleep values based on expenses conditions.
     """
+
     df['CryoSleep'] = np.where(df.CryoSleep.isnull() & (expenses == 0), True, df.CryoSleep)
     df['CryoSleep'] = np.where(df.CryoSleep.isnull() & (expenses > 0), False, df.CryoSleep)
+
+    amenities_cols = ['ShoppingMall', 'FoodCourt', 'Spa', 'VRDeck', 'RoomService']
+    df.loc[(df[amenities_cols].gt(0).any(axis=1)) & df['CryoSleep'].isna(), 'CryoSleep'] = False
+    df.loc[(df['CryoSleep'] == True) & df[amenities_cols].isna().any(axis=1), amenities_cols] = 0
+
 
     return df
 
@@ -297,20 +238,31 @@ def fill_missing_deckside(df):
     return df
 
 
-def fill_missing_values(df, expenses):
+def fill_missing_values(df):
     """
     Fill missing values in the DataFrame based on specific conditions.
     Args:
     df : DataFrame : input data
     expenses : Series : input data for expenses
     """
-    df = fill_missing_vip(df)
-    df = fill_missing_homeplanet(df)
-    df = fill_missing_cryosleep(df, expenses)
-    df = fill_missing_age(df, expenses)
-    df = fill_missing_deckno(df)
-    df = fill_missing_deckside(df)
+    EXPENSES_COLUMNS = ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
+    expenses = 0
+    for ex in EXPENSES_COLUMNS:
+        expenses += df[ex]
 
+    df = (df
+          .pipe(fill_missing_vip)
+          .pipe(fill_missing_homeplanet)
+          .pipe(lambda df: fill_missing_cryosleep(df, expenses))
+          .pipe(lambda df: fill_missing_age(df, expenses))
+          .pipe(fill_missing_deckno)
+          .pipe(fill_missing_deckside)
+          )
+
+    return df
+
+def group_age(df):
+    df['Age'] = pd.cut(df['Age'], bins=[0,1,5,13,18,25,66,110], labels=[0,1,2,3,4,5,6], right=False)
     return df
 
 
@@ -321,42 +273,55 @@ def preprocess(df, target_column):
     df = split_column(df, 'Cabin', '/', ['DeckNo', 'DeckNum', 'DeckSize'])
     df = split_column(df, 'Name', ' ', ['FirstName', 'LastName'])
 
-    # df = get_family_id(df)
 
-    analyze_data(df)
 
-    missing_values = df.groupby('SetId').apply(lambda x: x.isna().sum())
+    # analyze_data(df)
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    # fig, ax = plt.subplots(15, figsize=(18, 36))
+    # sns.countplot(x='Age', hue='Transported', data=df, ax=ax[14])
+    # sns.countplot(x='Age', hue='HomePlanet', data=df, ax=ax[0])
+    # sns.countplot(x='Age', hue='CryoSleep', data=df, ax=ax[1])
+    # sns.countplot(x='Age', hue='Destination', data=df, ax=ax[2])
+    # sns.countplot(x='Age', hue='VIP', data=df, ax=ax[3])
+    # sns.countplot(x='Age', hue='DeckNo', data=df, ax=ax[4])
+    # sns.countplot(x='Age', hue='DeckSide', data=df, ax=ax[5])
+    #
+    # df.groupby('Age')['RoomService'].sum().plot(kind='bar', ax=ax[6], legend=True)
+    # df.groupby('Age')['FoodCourt'].sum().plot(kind='bar', ax=ax[7], legend=True)
+    # df.groupby('Age')['ShoppingMall'].sum().plot(kind='bar', ax=ax[8], legend=True)
+    # df.groupby('Age')['Spa'].sum().plot(kind='bar', ax=ax[9], legend=True)
+    # df.groupby('Age')['VRDeck'].sum().plot(kind='bar', ax=ax[10], legend=True)
+    # df.groupby('Age')['Group'].count().plot(kind='bar', ax=ax[11], legend=True)
+    # df.groupby('Age')['pp'].count().plot(kind='bar', ax=ax[12], legend=True)
+    # df.groupby('Age')['Num'].count().plot(kind='bar', ax=ax[13], legend=True)
+    # fig.tight_layout()
+    # plt.show
+    df = get_FamilyId(df)
+
+    missing_values = df.groupby('SetId').apply(lambda x: x.isna().sum()).transpose()
+    print("\n==== PRINT MISSING VALUES ====")
     print(missing_values)
 
     # df['Transported'].value_counts().plot(kind='pie', autopct='%1.1f%%')
     # plt.show()
 
-    EXPENSES_COLUMNS = ['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
-    expenses = 0
-    for ex in EXPENSES_COLUMNS:
-        expenses += df[ex]
-    df = fill_missing_values(df, expenses)
+
+    df = fill_missing_values(df)
+
+    # df['DeckNum'] = df['DeckNum'].fillna(value=df['DeckNum'].mode()[0])
+    # df['DeckSize'] = df['DeckSize'].fillna(value=df['DeckSize'].mode()[0])
+
     # df['DeckNum'] = np.where(df.DeckNum.isnull() & df.LastName.eq(df.LastName.shift()),
     #                      df.DeckNum.shift(), df.DeckNum)
+    df = group_age(df)
 
-    df.loc[((df['ShoppingMall'] > 0) |
-            (df['FoodCourt'] > 0) |
-            (df['Spa'] > 0) |
-            (df['VRDeck'] > 0) |
-            (df['RoomService'] > 0)) &
-           df['CryoSleep'].isna(), 'CryoSleep'] = False
-    df.loc[(df['CryoSleep'] == True) &
-           ((df['ShoppingMall'].isna()) |
-            (df['FoodCourt'].isna()) |
-            (df['Spa'].isna()) |
-            (df['VRDeck'].isna()) |
-            (df['RoomService'].isna())), ['ShoppingMall', 'FoodCourt', 'Spa', 'VRDeck', 'RoomService']] = 0
 
     # df.isna().sum().plot(kind='bar')
     # plt.show()
 
     print(df.info())
-    print(df.dtypes)
 
     # 5. Encoding of categorical variables
     # One hot encoding
@@ -364,7 +329,7 @@ def preprocess(df, target_column):
     df = one_hot_encoding(df, cols_one_hot_encoded)
     # Ordinal encoding
     oe = OrdinalEncoder()
-    cols_ordinal_encoded = ['CryoSleep', 'VIP', 'DeckSize', 'Transported', 'DeckNo','DeckNum']
+    cols_ordinal_encoded = ['CryoSleep', 'VIP', 'DeckSize', 'Transported', 'DeckNo']
     df[cols_ordinal_encoded] = oe.fit_transform(df[cols_ordinal_encoded])
 
     # 4. Filling missing values
@@ -372,10 +337,18 @@ def preprocess(df, target_column):
     new_column_name = pd.Index([numerical_var_names])
     all_column_names = categorical_var_names.append(new_column_name)
 
+    missing_values = df.groupby('SetId').apply(lambda x: x.isna().sum()).transpose()
+    print("\n==== PRINT MISSING VALUES ====")
+    print(missing_values)
+
     df = num_inputation(df=df)
 
-    missing_values = df.groupby('SetId').apply(lambda x: x.isna().sum())
-    print(missing_values)
+    df['DeckNum'] = pd.to_numeric(df['DeckNum'], errors='coerce')
+    mean_value = df['DeckNum'].mean()
+    df['DeckNum'].fillna(mean_value, inplace=True)
+
+    df.to_csv("results_to_check.csv")
+
 
     X_test = df.loc[df['SetId'] == 'Test']
     X = df.loc[df['SetId'] == 'Train']
@@ -383,11 +356,8 @@ def preprocess(df, target_column):
 
     selected_columns = ['Age', 'RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']
 
-    X.drop(columns=['SetId', 'FirstName', 'LastName', 'DeckNum'], axis=1, inplace=True)
-    X_test.drop(columns=['SetId', target_column, 'FirstName', 'LastName', 'DeckNum'], axis=1, inplace=True)
-
-    # X.drop(columns=['SetId', 'FirstName', 'LastName'], axis=1, inplace=True)
-    # X_test.drop(columns=['SetId', target_column, 'FirstName', 'LastName'], axis=1, inplace=True)
+    X.drop(columns=['SetId', 'FirstName', 'LastName'], axis=1, inplace=True)
+    X_test.drop(columns=['SetId', target_column, 'FirstName', 'LastName'], axis=1, inplace=True)
 
     X = X.drop(target_column, axis=1)
 
@@ -397,26 +367,12 @@ def preprocess(df, target_column):
     scaler = StandardScaler()
     X_train[selected_columns] = scaler.fit_transform(X_train[selected_columns])
     X_val[selected_columns] = scaler.transform(X_val[selected_columns])
-    X_test[selected_columns] = scaler.fit_transform(X_test[selected_columns])
+    X_test[selected_columns] = scaler.transform(X_test[selected_columns])
+    X[selected_columns] = scaler.transform(X[selected_columns])
 
     X_train = X_train.values
     X_val = X_val.values
     X_test = X_test.values
+    X = X.values
 
-    # Modelling
-    models = [
-        ('Random Forest', RandomForestClassifier()),
-        ('XGBoost', XGBClassifier()),
-        ('LightGBM', LGBMClassifier()),
-        ('CatBoost', CatBoostClassifier(silent=True)),
-    ]
-    results = []
-    for model_name, model in models:
-        y_train_pred, y_val_pred = fit_and_predict(model, X_train, y_train, X_val)
-        result = print_metrics(model_name, y_train, y_train_pred, y_val, y_val_pred)
-        results.append(result)
-
-    results_df = pd.DataFrame(results)
-    print(results_df)
-
-    return X_train, X_val, y_train, y_val, X_test, passenger_ids
+    return X, y, X_train, X_val, y_train, y_val, X_test, passenger_ids

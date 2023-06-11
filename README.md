@@ -1,5 +1,6 @@
 # Spaceship Titanic Kaggle Challenge
 
+## Task description from Kaggle
 Welcome to the Spaceship Titanic Dimensional Anomaly Challenge! The year is 2912 and we have encountered an interstellar catastrophe. The Spaceship Titanic, carrying approximately 13,000 passengers, collided with a spacetime anomaly while en route to 55 Cancri E. Nearly half of the passengers have been transported to an alternate dimension! You must use your data science skills to help rescue the lost passengers by predicting which ones were transported.
 
 ## Dataset
@@ -9,73 +10,77 @@ You will be working with a dataset that consists of personal records of passenge
 ## File Descriptions
 
 train.csv - Training set with personal records for about two-thirds (~8700) of the passengers. This file contains the target column Transported, which indicates whether the passenger was transported to another dimension.
+
 test.csv - Test set with personal records for the remaining one-third (~4300) of the passengers. You must predict the value of Transported for each passenger in this set.
-submission.csv - A sample submission file in the correct format.
+
+ssample_submission.csv - A sample submission file in the correct format.
 
 ## Variables description
 
-PassengerId - A unique Id for each passenger, where the form is gggg_pp (gggg is the group, and pp is the number within the group).
-HomePlanet - The planet from which the passenger departed.
-CryoSleep - Whether the passenger elected to be put into suspended animation for the duration of the voyage.
-Cabin - The cabin number where the passenger is staying (format deck/num/side, where side is P for Port or S for Starboard).
-Destination - The planet to which the passenger will be disembarking.
-Age - The age of the passenger.
-VIP - Whether the passenger has paid for special VIP service during the voyage.
-RoomService, FoodCourt, ShoppingMall, Spa, VRDeck - Amount billed at each of the Spaceship Titanic's amenities.
-Name - The first and last names of the passenger.
-Transported - Whether the passenger was transported to another dimension (target variable).
-
+- **PassengerId** - A unique Id for each passenger, where the form is `gggg_pp` (gggg is the group, and pp is the number within the group).
+- **HomePlanet** - The planet from which the passenger departed.
+- **CryoSleep** - Whether the passenger elected to be put into suspended animation for the duration of the voyage.
+- **Cabin** - The cabin number where the passenger is staying (format `deck/num/side`, where side is P for Port or S for Starboard).
+- **Destination** - The planet to which the passenger will be disembarking.
+- **Age** - The age of the passenger.
+- **VIP** - Whether the passenger has paid for special VIP service during the voyage.
+- **RoomService**, **FoodCourt**, **ShoppingMall**, **Spa**, **VRDeck** - Amount billed at each of the Spaceship Titanic's amenities.
+- **Name** - The first and last names of the passenger.
+- **Transported** - Whether the passenger was transported to another dimension (target variable).
+- 
 ## Variables characteristics after initial transformation
 Data columns (total 21 columns):
- #   Column        Non-Null Count  Dtype   
----  ------        --------------  -----   
- 0   HomePlanet    12967 non-null  object  
- 1   CryoSleep     12957 non-null  object  
- 2   Destination   12696 non-null  object  
- 3   Age           12947 non-null  category
- 4   VIP           12926 non-null  object  
- 5   RoomService   12800 non-null  float64 
- 6   FoodCourt     12790 non-null  float64 
- 7   ShoppingMall  12795 non-null  float64 
- 8   Spa           12793 non-null  float64 
- 9   VRDeck        12793 non-null  float64 
- 10  Transported   8693 non-null   object  
- 11  SetId         12970 non-null  object  
- 12  GroupId       12970 non-null  object  
- 13  SubgroupId    12970 non-null  object  
- 14  DeckNo        12970 non-null  object  
- 15  DeckNum       12671 non-null  object  
- 16  DeckSize      12739 non-null  object  
- 17  FirstName     12676 non-null  object  
- 18  LastName      12676 non-null  object  
- 19  FamilySize    12676 non-null  float64 
- 20  FamilyId      12970 non-null  object  
+ | Index | Column Name  | Non-Null Count | Data Type |
+|-------|--------------|----------------|-----------|
+| 0     | HomePlanet   | 12967          | object    |
+| 1     | CryoSleep    | 12957          | object    |
+| 2     | Destination  | 12696          | object    |
+| 3     | Age          | 12947          | category  |
+| 4     | VIP          | 12926          | object    |
+| 5     | RoomService  | 12800          | float64   |
+| 6     | FoodCourt    | 12790          | float64   |
+| 7     | ShoppingMall | 12795          | float64   |
+| 8     | Spa          | 12793          | float64   |
+| 9     | VRDeck       | 12793          | float64   |
+| 10    | Transported  | 8693           | object    |
+| 11    | SetId        | 12970          | object    |
+| 12    | GroupId      | 12970          | object    |
+| 13    | SubgroupId   | 12970          | object    |
+| 14    | DeckNo       | 12970          | object    |
+| 15    | DeckNum      | 12671          | object    |
+| 16    | DeckSize     | 12739          | object    |
+| 17    | FirstName    | 12676          | object    |
+| 18    | LastName     | 12676          | object    |
+| 19    | FamilySize   | 12676          | float64   |
+| 20    | FamilyId     | 12970          | object    |
+
 dtypes: category(1), float64(6), object(14)
 
 ## Characteristics of missing values
 
-SetId         Test  Train
-HomePlanet      87    201
-CryoSleep       93    217
-Destination     92    182
-Age             91    179
-VIP             93    203
-RoomService     82    181
-FoodCourt      106    183
-ShoppingMall    98    208
-Spa            101    183
-VRDeck          80    188
-Transported   4277      0
-SetId            0      0
-GroupId          0      0
-SubgroupId       0      0
-DeckNo         100    199
-DeckNum        100    199
-DeckSize       100    199
-FirstName       94    200
-LastName        94    200
-FamilySize      94    200
-FamilyId         0      0
+| Column Name  | Test | Train |
+|--------------|------|-------|
+| HomePlanet   | 87   | 201   |
+| CryoSleep    | 93   | 217   |
+| Destination  | 92   | 182   |
+| Age          | 91   | 179   |
+| VIP          | 93   | 203   |
+| RoomService  | 82   | 181   |
+| FoodCourt    | 106  | 183   |
+| ShoppingMall | 98   | 208   |
+| Spa          | 101  | 183   |
+| VRDeck       | 80   | 188   |
+| Transported  | 4277 | 0     |
+| SetId        | 0    | 0     |
+| GroupId      | 0    | 0     |
+| SubgroupId   | 0    | 0     |
+| DeckNo       | 100  | 199   |
+| DeckNum      | 100  | 199   |
+| DeckSize     | 100  | 199   |
+| FirstName    | 94   | 200   |
+| LastName     | 94   | 200   |
+| FamilySize   | 94   | 200   |
+| FamilyId     | 0    | 0     |
 
 # Overview of the Code
 

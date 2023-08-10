@@ -1,7 +1,7 @@
 # Spaceship Titanic Kaggle Challenge
 
 <p align="center">
-  <img src="src/project/img/spaceship-titanic.jpg?raw=true" alt="AI Generated Spaceship Titanic" title="AI Generated Spaceship Titanic" align="center">
+  <img src="project/img/spaceship-titanic.jpg?raw=true" alt="AI Generated Spaceship Titanic" title="AI Generated Spaceship Titanic" align="center">
 
 **Disclaimer:** The image was generated using artificial intelligence and, hence, is not subject to copyright protection.
 </p>

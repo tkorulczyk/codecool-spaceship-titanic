@@ -1,5 +1,12 @@
 # Spaceship Titanic Kaggle Challenge
 
+<p align="center">
+  <img src="src/project/img/spaceship-titanic.jpg?raw=true" alt="AI Generated Spaceship Titanic" title="AI Generated Spaceship Titanic" align="center">
+
+**Disclaimer:** The image was generated using artificial intelligence and, hence, is not subject to copyright protection.
+</p>
+
+
 ## Task description from Kaggle
 Welcome to the Spaceship Titanic Dimensional Anomaly Challenge! The year is 2912 and we have encountered an interstellar catastrophe. The Spaceship Titanic, carrying approximately 13,000 passengers, collided with a spacetime anomaly while en route to 55 Cancri E. Nearly half of the passengers have been transported to an alternate dimension! You must use your data science skills to help rescue the lost passengers by predicting which ones were transported.
 
